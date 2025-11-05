@@ -64,38 +64,52 @@
         - Merged file: `services/ingest/data/all_guidelines.jsonl`
 
 * **Day 3-4: Vector Database Setup**
-    * [ ] Install ChromaDB: `pip install chromadb sentence-transformers`
-    * [ ] Create `backend/app/rag/__init__.py` (empty module marker)
-    * [ ] Create `backend/app/rag/vector_store.py`:
-        - [ ] Initialize ChromaDB persistent client
-        - [ ] Define collection schema with metadata
-        - [ ] Write `add_documents()` function (text + embeddings + metadata)
-        - [ ] Write `search()` function (query → embedding → top-k results)
-    * [ ] Create `backend/app/rag/embeddings.py`:
-        - [ ] Load sentence-transformer model: `all-MiniLM-L6-v2`
-        - [ ] Write `generate_embedding()` function for single text
-        - [ ] Write `batch_generate_embeddings()` for efficiency
-    * [ ] Test vector store with sample inserts and queries
+    * ✅ Install ChromaDB and embeddings stack: `pip install chromadb sentence-transformers torch`
+    * ✅ Create `backend/app/rag/__init__.py` (empty module marker)
+    * ✅ Create `backend/app/rag/vector_store.py`:
+        - ✅ Initialize ChromaDB persistent client (persisted to `services/ingest/chroma_db`)
+        - ✅ Define collection and metadata storage (source, target_model, chunk_id, created_at)
+        - ✅ Write `add_documents()` function (batch-embeds + insert)
+        - ✅ Write `search()` function (query → embedding → top-k results, optional target_model filter)
+    * ✅ Create `backend/app/rag/embeddings.py`:
+        - ✅ Load sentence-transformer model: `all-MiniLM-L6-v2`
+        - ✅ `generate_embedding()` for single text
+        - ✅ `batch_generate_embeddings()` for efficiency
+    * ✅ Test vector store with sample inserts and queries
+        - Result: Collection created and query works. Sample query "write persuasive ad copy for a SaaS product" (ChatGPT filter) returned relevant chunks. 
+        - Current collection count after test population: 811
 
 * **Day 5: Ingestion Script & Population**
-    * [ ] Create `backend/app/rag/populate_db.py`:
-        - [ ] Load JSONL dataset from `services/ingest/data/`
-        - [ ] For each item: generate embedding, insert into ChromaDB
-        - [ ] Add metadata: source, target_model, chunk_id, created_at
-        - [ ] Print progress (every 50 items)
-    * [ ] Run population script: `python -m app.rag.populate_db`
-    * [ ] Verify collection count matches expected documents
+    * ✅ Create `backend/app/rag/populate_db.py`:
+        - ✅ Load JSONL dataset from `services/ingest/data/`
+        - ✅ For each item: generate embedding, insert into ChromaDB
+        - ✅ Add metadata: source, target_model, chunk_id, created_at
+        - ✅ Print progress (every 50 items)
+    * ✅ Run population script:
+        - From repo root: `python -m backend.app.rag.populate_db`
+    * ✅ Verify collection count matches expected documents → 811
 
 * **Day 6-7: Retrieval Function & Testing**
-    * [ ] Create `backend/app/rag/retriever.py`:
-        - [ ] `retrieve_context(query: str, target_model: str, top_k: int = 5)`
-        - [ ] Filter by target_model metadata
-        - [ ] Return list of relevant text chunks with scores
-    * [ ] Test retrieval quality with sample queries:
-        - "Explain machine learning" → expect tutorial/explanation guidelines
-        - "Summarize a research paper" → expect summarization best practices
-    * [ ] Tune top_k parameter (try 3, 5, 10) for quality vs context length
-    * [ ] Document retrieval behavior in `backend/README.md`
+    * ✅ Create `backend/app/rag/retriever.py`:
+        - ✅ `retrieve_context(query: str, target_model: Optional[str], top_k: int = 5)`
+        - ✅ Filter by target_model metadata (ChatGPT/Gemini/Claude)
+        - ✅ Return list of `RetrievedChunk` objects with text, scores, distances, metadata
+        - ✅ `format_context()` helper to build prompt-ready context string
+        - ✅ CLI tool for testing: `python -m backend.app.rag.retriever --query "..." --top-k N`
+    * ✅ Test retrieval quality with sample queries:
+        - ✅ "Explain machine learning" → Retrieved 5 relevant ChatGPT tutorial chunks (scores: 0.44-0.43)
+        - ✅ "Summarize a research paper" → Retrieved 5 summarization guidelines (scores: 0.50-0.47)
+        - ✅ "Write a product description" → Retrieved 10 creative writing guidelines (scores: 0.54-0.45)
+        - ✅ Model filtering verified: `--target-model ChatGPT` returns only ChatGPT chunks
+    * ✅ Tune top_k parameter (tried 3, 5, 10):
+        - **Recommendation:** `top_k=5` is optimal for most queries (balances relevance and context size)
+        - Use `top_k=3` for tighter, more focused context (shorter prompts)
+        - Use `top_k=10` for broad or complex queries requiring diverse examples
+    * ✅ Document retrieval behavior in `backend/README.md`:
+        - Added API surface documentation
+        - Included tuning guidance and score interpretation
+        - Provided CLI test examples
+        - Added integration notes for `/augment` endpoint
 
 #### **Week 4: Fine-Tuning Dataset Expansion**
 * **Primary Focus:** Scale to 1,000 Training Examples

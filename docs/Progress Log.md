@@ -4,6 +4,117 @@
 
 ---
 
+## 📌 Week 04 (November 3-4, 2025)
+
+### Day 01 (November 3, 2025)
+* **Key Accomplishments:** 
+  - Created `backend/app/rag/populate_db.py` to load 811 guideline chunks into ChromaDB.
+  - Ran population script successfully: `python -m backend.app.rag.populate_db`
+  - Fixed ChromaDB configuration deprecation error (migrated to new Settings API with `persist_directory` and `is_persistent=True`).
+  - Verified database population: 811 documents added to `prometheus_guidelines` collection.
+  - Tested vector store persistence: confirmed collection count and metadata storage.
+  - Installed additional dependencies: `pip install torch` for sentence-transformers acceleration.
+  - Updated `backend/requirements.txt` with chromadb, sentence-transformers, and torch.
+  - Began planning retrieval function architecture and CLI testing approach.
+
+* **Goals for Next Day:** 
+  - [ ] Implement `backend/app/rag/retriever.py` with advanced retrieval capabilities.
+  - [ ] Create CLI tool for retrieval testing.
+  - [ ] Run comprehensive quality tests and tune parameters.
+  - [ ] Document retrieval behavior and update Timeline.md.
+
+### Team Contributions
+* **Jero** :
+  - Created `backend/app/rag/populate_db.py` script with JSONL loading and batch insertion.
+  - Debugged ChromaDB Settings deprecation error and migrated to new API.
+  - Ran population script and verified 811 documents added successfully.
+  - Notes: implemented progress tracking and error handling for large-batch inserts.
+
+* **Kabe** :
+  - Installed torch dependency for sentence-transformers acceleration.
+  - Verified vector store persistence and collection integrity.
+  - Planned retriever module architecture with scoring and formatting helpers.
+  - Notes: prepared infrastructure for advanced retrieval implementation.
+
+* **Bala** :
+  - Updated `backend/requirements.txt` with chromadb, sentence-transformers, and torch.
+  - Tested ChromaDB client persistence across different sessions.
+  - Verified embedding generation performance with batch operations.
+  - Notes: ensured stable environment for retrieval development.
+
+* **Junjar** : 
+  - Verified database population success: 811/811 documents indexed.
+  - Confirmed metadata storage (source, target_model, chunk_id, created_at).
+  - Documented population script usage and troubleshooting.
+  - Notes: prepared for retrieval testing phase.
+
+---
+
+### Day 02 (November 4, 2025)
+* **Key Accomplishments:** 
+  - Created `backend/app/rag/retriever.py` with advanced retrieval capabilities:
+    - `retrieve_context(query, target_model, top_k)` function returning `RetrievedChunk` objects
+    - `format_context()` helper to build prompt-ready context strings (max_chars limit)
+    - CLI tool for testing: `python -m backend.app.rag.retriever --query "..." --top-k N`
+    - Similarity scoring using `1/(1+distance)` formula for bounded scores
+  - Ran comprehensive retrieval quality tests:
+    - Query: "Explain machine learning" → 5 relevant ChatGPT tutorial chunks (scores: 0.44-0.43)
+    - Query: "Summarize a research paper" → 5 summarization guidelines (scores: 0.50-0.47)
+    - Query: "Write a product description" → 10 creative writing guidelines (scores: 0.54-0.45)
+    - Verified model-specific filtering: `--target-model ChatGPT` returns only ChatGPT chunks
+  - Tuned `top_k` parameter (tested 3, 5, 10):
+    - **Optimal default:** `top_k=5` balances relevance and context size
+    - `top_k=3` for tighter, focused context (shorter prompts)
+    - `top_k=10` for broad queries requiring diverse examples
+  - Documented retrieval behavior in `backend/README.md`:
+    - API surface documentation (vector_store.search, retriever.retrieve_context, format_context)
+    - Tuning guidance and score interpretation
+    - CLI test examples and integration notes for `/augment` endpoint
+  - Updated `docs/Timeline.md`: marked Week 3 Day 3-7 tasks as completed with detailed test results.
+
+* **Goals for Next Day:** 
+  - [ ] Begin Week 4 tasks: create 50 diverse seed prompts for fine-tuning dataset.
+  - [ ] Start synthetic augmentation planning for scaling to 1,000 training examples.
+  - [ ] Consider integrating retriever into `/augment` endpoint for early MVP testing.
+
+### Team Contributions
+* **Jero** :
+  - Implemented similarity score normalization using `1/(1+distance)` formula.
+  - Created `RetrievedChunk` dataclass with id, text, score, distance, and metadata fields.
+  - Tested score calculation and verified bounded output (0,1] range.
+  - Notes: ensured consistent scoring across different distance metrics.
+
+* **Kabe** :
+  - Created `backend/app/rag/retriever.py` with `retrieve_context()` and helper functions.
+  - Built CLI tool for retrieval testing with argparse (--query, --top-k, --target-model, --print-context).
+  - Implemented `format_context()` helper for prompt-ready context strings.
+  - Notes: focused on developer experience with clear output formatting and testing utilities.
+
+* **Bala** :
+  - Ran comprehensive retrieval quality tests with diverse query types.
+  - Tested `top_k` parameter tuning (3, 5, 10) and documented recommendations.
+  - Verified model-specific filtering works correctly across ChatGPT, Gemini, Claude.
+  - Notes: assessed retrieval quality and provided tuning guidance for production use.
+
+* **Junjar** : 
+  - Documented retrieval behavior in `backend/README.md` with API surface and integration notes.
+  - Updated `docs/Timeline.md` to mark Week 3 Day 3-7 tasks as completed.
+  - Added CLI test examples and tuning guidance to documentation.
+  - Notes: ensured documentation reflects actual implementation and test results for future integration.
+
+### RAG System Summary
+| Component | Implementation | Status |
+|-----------|---------------|--------|
+| Vector Store | ChromaDB persistent (`services/ingest/chroma_db`) | ✅ Complete |
+| Embeddings | all-MiniLM-L6-v2 (384-dim) | ✅ Complete |
+| Collection | prometheus_guidelines (811 docs) | ✅ Populated |
+| Retrieval | retrieve_context + format_context | ✅ Complete |
+| Testing | CLI tool + quality tests | ✅ Complete |
+| Documentation | backend/README.md + Timeline.md | ✅ Complete |
+| **RAG Pipeline** | **End-to-end functional** | ✅ **Ready for integration** |
+
+---
+
 ## 📌 Week 03 (October 28-29, 2025)
 
 ### Day 01 (October 28, 2025)

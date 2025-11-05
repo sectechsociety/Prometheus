@@ -3,3 +3,6 @@ uvicorn[standard]
 pydantic
 python-multipart
 requests
+chromadb
+sentence-transformers
+torch
