@@ -5,4 +5,8 @@ python-multipart
 requests
 chromadb
 sentence-transformers
-torch
+transformers>=4.46.0
+peft>=0.13.2
+torch>=2.5.0
+accelerate>=1.1.0
+sentencepiece>=0.2.0bitsandbytes>=0.44.1
