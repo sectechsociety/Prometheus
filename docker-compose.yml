@@ -1,16 +1,101 @@
 version: '3.8'
+
+# Project Prometheus - Docker Compose Configuration
+# Production-ready setup for backend API + frontend UI
+# Version: 1.0.0
+
 services:
+  # FastAPI Backend Service
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: prometheus-backend
     ports:
       - "8000:8000"
     volumes:
+      # Mount source for live development (comment out for production)
       - ./backend:/app
+      # Persist ChromaDB data
+      - ./services/ingest/chroma_db:/app/services/ingest/chroma_db
+      # Mount LoRA adapter
+      - ./backend/app/model/prometheus_lora_adapter:/app/app/model/prometheus_lora_adapter
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - CHROMA_DB_PATH=services/ingest/chroma_db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - prometheus-network
+
+  # React + Vite Frontend Service
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: prometheus-frontend
     ports:
       - "5173:5173"
     volumes:
+      # Mount source for live development (comment out for production)
       - ./frontend:/app
+      # Prevent node_modules from being overwritten
+      - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - VITE_API_BASE_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - prometheus-network
+
+networks:
+  prometheus-network:
+    driver: bridge
+    name: prometheus-network
+
+# Volume definitions (optional, for named volumes)
+volumes:
+  chroma_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./services/ingest/chroma_db
+
+# Usage:
+# Development mode (with hot reload):
+#   docker-compose up --build
+#
+# Production mode (detached):
+#   docker-compose up -d --build
+#
+# View logs:
+#   docker-compose logs -f
+#   docker-compose logs -f backend
+#   docker-compose logs -f frontend
+#
+# Stop services:
+#   docker-compose down
+#
+# Stop and remove volumes:
+#   docker-compose down -v
+#
+# Rebuild without cache:
+#   docker-compose build --no-cache
+#
+# Access services:
+#   Frontend: http://localhost:5173
+#   Backend API: http://localhost:8000
+#   API Docs: http://localhost:8000/docs
+#   Health Check: http://localhost:8000/health
+

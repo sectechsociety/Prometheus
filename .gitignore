@@ -5,3 +5,16 @@ __pycache__
 *.pyc
 .DS_Store
 /.github
+# Large model files (download separately or retrain)
+backend/app/model/prometheus_lora_adapter/*.safetensors
+backend/app/model/prometheus_lora_adapter/tokenizer.model
+
+# Log files
+*.log
+
+# Temporary files
+backend/=0.44.1
+
+# ChromaDB binary files (can be regenerated)
+backend/services/ingest/chroma_db/
+services/ingest/chroma_db/
