@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict
 import chromadb
 from chromadb.config import Settings
+import os
 
 from .embeddings import generate_embedding, batch_generate_embeddings
 
@@ -11,8 +12,8 @@ MODEL_PRIORITY_BOOST = 0.2  # 20% boost for matching target_model
 
 
 def init_client(persist: bool = True):
-    # Use persistent directory so data survives across processes during development
-    persist_dir = "services/ingest/chroma_db"
+    # Use CHROMA_DATA_PATH from environment (for Render.com) or default path
+    persist_dir = os.getenv("CHROMA_DATA_PATH", "services/ingest/chroma_db")
     settings = Settings(persist_directory=persist_dir, is_persistent=True)
     client = chromadb.Client(settings=settings)
     return client

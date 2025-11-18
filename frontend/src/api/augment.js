@@ -1,5 +1,6 @@
-// API Base URL - defaults to localhost for development
-const BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:8000'
+// API Base URL - from config.js
+import { API_BASE_URL } from '../config.js'
+const BASE = API_BASE_URL
 
 /**
  * Enhance a raw prompt using the Prometheus API

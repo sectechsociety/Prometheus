@@ -18,12 +18,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS for local dev (Vite at 5173)
+# CORS for local dev (Vite at 5173) and production (Render.com)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://prometheus-frontend.onrender.com",  # Update after deployment
+        "https://prometheus-frontend-*.onrender.com",  # Catch all Render preview URLs
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -294,3 +296,21 @@ async def health_check():
     health_status["timestamp"] = datetime.utcnow().isoformat()
     
     return health_status
+
+
+# Run server (supports Render.com PORT environment variable)
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    
+    # Use PORT from environment (Render.com) or default to 8000
+    port = int(os.getenv("PORT", 8000))
+    host = os.getenv("HOST", "0.0.0.0")
+    
+    logger.info(f"Starting server on {host}:{port}")
+    uvicorn.run(
+        "app.main:app",
+        host=host,
+        port=port,
+        reload=False  # Disable reload in production
+    )
