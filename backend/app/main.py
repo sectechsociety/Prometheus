@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
+import os
 
 # Import our modules
 from .model.inference import get_model
@@ -18,15 +19,26 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS for local dev (Vite at 5173) and production (Render.com)
+# CORS for local dev (Vite at 5173), production (Vercel/Railway), and Render.com
+frontend_url = os.getenv("FRONTEND_URL", "")
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://prometheus-frontend.onrender.com",  # Render.com
+    "https://prometheus-frontend-*.onrender.com",  # Render preview URLs
+]
+
+# Add Vercel domain if FRONTEND_URL is set
+if frontend_url:
+    allowed_origins.append(frontend_url)
+    # Also allow preview deployments (Vercel pattern)
+    if "vercel.app" in frontend_url:
+        base = frontend_url.split("//")[1].split(".")[0]
+        allowed_origins.append(f"https://{base}-*.vercel.app")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://prometheus-frontend.onrender.com",  # Update after deployment
-        "https://prometheus-frontend-*.onrender.com",  # Catch all Render preview URLs
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
