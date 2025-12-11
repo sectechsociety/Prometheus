@@ -77,7 +77,8 @@ class PrometheusLightModel:
         # Extract key guidelines from RAG context
         guidelines = []
         if rag_context:
-            guidelines = [doc.get("text", "")[:200] for doc in rag_context[:3]]
+            # Use full text, but limit to reasonable length to avoid context window issues
+            guidelines = [doc.get("text", "")[:500] for doc in rag_context[:3]]
             logger.info(f"📚 Using {len(guidelines)} RAG guidelines")
 
         # Route to model-specific enhancement
@@ -95,38 +96,41 @@ class PrometheusLightModel:
     def _enhance_for_chatgpt(self, prompt: str, guidelines: list[str]) -> list[str]:
         """
         ChatGPT-optimized enhancements.
-        Best practices: Role clarity, step-by-step, structured output.
+        Best practices: Role clarity, step-by-step, structured output, few-shot.
         """
         variants = []
+        
+        guideline_text = ""
+        if guidelines:
+            guideline_text = "\n\nRelevant Guidelines:\n" + "\n".join([f"- {g}" for g in guidelines])
 
-        # Variant 1: Role-based with clear task definition
-        variant1 = f"""You are an expert assistant specializing in providing clear, accurate responses.
+        # Variant 1: Role-based + Chain of Thought
+        variant1 = f"""Act as an expert prompt engineer. Optimize the following task for ChatGPT.
 
 Task: {prompt}
 
-Please provide a detailed, step-by-step response with examples where helpful."""
+Instructions:
+1. Assign a specific expert persona relevant to the task.
+2. Break down the task into clear, logical steps.
+3. Use a professional and objective tone.
+4. Include specific constraints or requirements.{guideline_text}
+
+Optimized Prompt:"""
         variants.append(variant1)
 
-        # Variant 2: Structured output format
-        variant2 = f"""Task: {prompt}
+        # Variant 2: Structured Output + Examples (Few-Shot style)
+        variant2 = f"""You are a helpful AI assistant. Rewrite the following prompt to be more effective for ChatGPT.
 
-Please structure your response as follows:
-1. **Understanding**: Briefly restate what you need to accomplish
-2. **Approach**: Outline your methodology
-3. **Solution**: Provide the detailed answer
-4. **Verification**: Confirm the solution meets all requirements"""
+Original Prompt: {prompt}
+
+Please structure the new prompt to include:
+- **Context**: Background information.
+- **Goal**: What exactly needs to be achieved.
+- **Format**: How the output should look (e.g., table, code block, list).
+- **Examples**: Provide 1-2 examples of desired output if applicable.{guideline_text}
+
+Improved Prompt:"""
         variants.append(variant2)
-
-        # Variant 3: With RAG guidelines if available
-        if guidelines:
-            guideline_text = "\n".join([f"- {g}" for g in guidelines[:2]])
-            variant3 = f"""Context and Best Practices:
-{guideline_text}
-
-Task: {prompt}
-
-Please provide a comprehensive response following the guidelines above."""
-            variants.append(variant3)
 
         return variants
 
@@ -136,29 +140,80 @@ Please provide a comprehensive response following the guidelines above."""
         Best practices: XML tags, thinking process, clear structure.
         """
         variants = []
+        
+        guideline_text = ""
+        if guidelines:
+            guideline_text = "\n<guidelines>\n" + "\n".join([f"<rule>{g}</rule>" for g in guidelines]) + "\n</guidelines>"
 
         # Variant 1: XML-structured (Claude's preference)
-        variant1 = f"""<task>
+        variant1 = f"""You are an expert at writing prompts for Claude. Rewrite the user's prompt using XML tags for structure.
+
+<user_prompt>
 {prompt}
-</task>
+</user_prompt>
+
+{guideline_text}
 
 <instructions>
-Please provide a clear, well-reasoned response.
-Think step-by-step and use examples where appropriate.
-</instructions>"""
+1. Wrap the main context in <context> tags.
+2. Put the specific task in <task> tags.
+3. Define the output format in <format> tags.
+4. Ask Claude to "think step-by-step" before answering in <thinking> tags.
+</instructions>
+
+<optimized_prompt>"""
         variants.append(variant1)
 
-        # Variant 2: Explicit thinking process (Unused)
-        # variant2 = f"""Human: {prompt}
-        #
-        # Please think through this carefully, showing your reasoning process, then provide your final answer."""
+        # Variant 2: Chain of Thought & Persona
+        variant2 = f"""Rewrite this prompt for Claude 3. Use a sophisticated, academic persona.
+
+Prompt: {prompt}
+
+Requirements:
+- Encourage the model to "think" before answering.
+- Use clear, numbered lists for complex instructions.
+- Avoid negative constraints (don't say "don't do X", say "do Y instead").{guideline_text}
+
+New Prompt:"""
+        variants.append(variant2)
         
         return variants
 
     def _enhance_for_gemini(self, prompt: str, guidelines: list[str]) -> list[str]:
         """Gemini-optimized enhancements."""
-        # Reuse ChatGPT logic for now as a placeholder
-        return self._enhance_for_chatgpt(prompt, guidelines)
+        variants = []
+        
+        guideline_text = ""
+        if guidelines:
+            guideline_text = "\n\n**Guidelines:**\n" + "\n".join([f"* {g}" for g in guidelines])
+
+        # Variant 1: Clear & Concise with Multimodal hints (if applicable)
+        variant1 = f"""Optimize this prompt for Google Gemini.
+
+Task: {prompt}
+
+Focus on:
+*   **Clarity**: Use simple, direct language.
+*   **Structure**: Use bullet points and bold text for readability.
+*   **Creativity**: Encourage a slightly more creative and expansive tone.{guideline_text}
+
+Optimized Prompt:"""
+        variants.append(variant1)
+        
+        # Variant 2: Role & Context
+        variant2 = f"""Act as a prompt engineering expert. Improve the following prompt for Gemini.
+
+Input: {prompt}
+
+Please add:
+1.  **Role**: Who is Gemini acting as?
+2.  **Context**: Why is this task being performed?
+3.  **Constraints**: Word count, style, etc.{guideline_text}
+
+Better Prompt:"""
+        variants.append(variant2)
+
+        return variants
 
     def _generic_enhancement(self, prompt: str, guidelines: list[str]) -> list[str]:
         """Generic fallback."""
