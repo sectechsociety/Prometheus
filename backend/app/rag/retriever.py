@@ -1,19 +1,19 @@
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
+from typing import Any
 
-from .vector_store import search, get_model_statistics
+from .vector_store import get_model_statistics, search
 
 
 @dataclass
 class RetrievedChunk:
-    id: Optional[str]
+    id: str | None
     text: str
-    score: Optional[float]
-    distance: Optional[float]
-    metadata: Dict[str, Any]
+    score: float | None
+    distance: float | None
+    metadata: dict[str, Any]
 
 
-def _build_items(results: Dict[str, Any]) -> List[RetrievedChunk]:
+def _build_items(results: dict[str, Any]) -> list[RetrievedChunk]:
     docs = (results or {}).get("documents", [[]])
     metas = (results or {}).get("metadatas", [[]])
     ids = (results or {}).get("ids", [[]])
@@ -29,12 +29,12 @@ def _build_items(results: Dict[str, Any]) -> List[RetrievedChunk]:
     dists0 = dists[0] if len(dists) > 0 else []
     scores0 = scores[0] if scores and len(scores) > 0 else []
 
-    items: List[RetrievedChunk] = []
+    items: list[RetrievedChunk] = []
     for i, text in enumerate(docs0):
         meta = metas0[i] if i < len(metas0) else {}
         _id = ids0[i] if i < len(ids0) else None
         dist = dists0[i] if i < len(dists0) else None
-        
+
         # Use explicit score from re-ranking if available, else compute
         if scores0 and i < len(scores0):
             score = scores0[i]
@@ -42,29 +42,26 @@ def _build_items(results: Dict[str, Any]) -> List[RetrievedChunk]:
             score = 1.0 / (1.0 + float(dist))
         else:
             score = None
-            
+
         items.append(RetrievedChunk(id=_id, text=text, score=score, distance=dist, metadata=meta))
     return items
 
 
 def retrieve_context(
-    query: str,
-    target_model: Optional[str] = None,
-    top_k: int = 5,
-    model_specific_only: bool = False
-) -> List[RetrievedChunk]:
+    query: str, target_model: str | None = None, top_k: int = 5, model_specific_only: bool = False
+) -> list[RetrievedChunk]:
     """
     Retrieve model-specific context for prompt enhancement.
-    
+
     Args:
         query: User's raw prompt
         target_model: Target AI model (ChatGPT, Gemini, Claude)
         top_k: Number of guidelines to retrieve
         model_specific_only: If True, only use guidelines for target_model
-    
+
     Returns:
         List of relevant guideline chunks with metadata
-    
+
     Example:
         >>> chunks = retrieve_context(
         ...     "Explain quantum computing",
@@ -74,22 +71,17 @@ def retrieve_context(
         >>> print(f"Retrieved {len(chunks)} Claude-prioritized guidelines")
     """
     res = search(
-        query=query,
-        top_k=top_k,
-        target_model=target_model,
-        model_specific_only=model_specific_only
+        query=query, top_k=top_k, target_model=target_model, model_specific_only=model_specific_only
     )
     return _build_items(res)
 
 
 def format_context(
-    items: List[RetrievedChunk],
-    target_model: Optional[str] = None,
-    max_chars: int = 2000
+    items: list[RetrievedChunk], target_model: str | None = None, max_chars: int = 2000
 ) -> str:
     """
     Format retrieved guidelines into model-specific prompt context.
-    
+
     Different models prefer different context formats:
     - ChatGPT: Conversational bullets with examples
     - Claude: XML-structured sections
@@ -97,7 +89,7 @@ def format_context(
     """
     if not items:
         return ""
-    
+
     # Model-specific formatting
     if target_model == "Claude":
         # Claude loves XML tags
@@ -105,11 +97,11 @@ def format_context(
         for chunk in items:
             if len("\n".join(context_parts)) > max_chars:
                 break
-            src = chunk.metadata.get('source', 'unknown')
+            src = chunk.metadata.get("source", "unknown")
             context_parts.append(f"<guideline source='{src}'>\n{chunk.text}\n</guideline>")
         context_parts.append("</guidelines>")
         return "\n".join(context_parts)
-    
+
     elif target_model == "Gemini":
         # Gemini prefers concise, action-oriented
         context_parts = ["**Enhancement Guidelines:**"]
@@ -117,24 +109,24 @@ def format_context(
             if len("\n".join(context_parts)) > max_chars:
                 break
             # Extract key points (first sentence or up to 100 chars)
-            summary = chunk.text.split('.')[0][:100]
-            if not summary.endswith('.'):
+            summary = chunk.text.split(".")[0][:100]
+            if not summary.endswith("."):
                 summary += "..."
             context_parts.append(f"{i}. {summary}")
         return "\n".join(context_parts)
-    
+
     else:  # ChatGPT or default
         # ChatGPT handles longer, example-rich context well
         context_parts = ["Here are relevant prompt engineering guidelines:\n"]
         for i, chunk in enumerate(items, 1):
             if len("\n".join(context_parts)) > max_chars:
                 break
-            src = chunk.metadata.get('source', 'guidelines')
+            src = chunk.metadata.get("source", "guidelines")
             context_parts.append(f"**Guideline {i}** (from {src}):\n{chunk.text}\n")
         return "\n".join(context_parts)
 
 
-def get_retrieval_stats() -> Dict[str, int]:
+def get_retrieval_stats() -> dict[str, int]:
     """Get statistics about the knowledge base for monitoring."""
     return get_model_statistics()
 
@@ -145,10 +137,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Retrieve model-specific guideline chunks")
     parser.add_argument("--query", required=True, help="User query to retrieve context for")
-    parser.add_argument("--target-model", default=None, help="Target model (ChatGPT, Gemini, Claude)")
+    parser.add_argument(
+        "--target-model", default=None, help="Target model (ChatGPT, Gemini, Claude)"
+    )
     parser.add_argument("--top-k", type=int, default=5, help="Number of results")
-    parser.add_argument("--print-context", action="store_true", help="Print formatted context block")
-    parser.add_argument("--model-only", action="store_true", help="Only retrieve guidelines for target model")
+    parser.add_argument(
+        "--print-context", action="store_true", help="Print formatted context block"
+    )
+    parser.add_argument(
+        "--model-only", action="store_true", help="Only retrieve guidelines for target model"
+    )
     args = parser.parse_args()
 
     print(f"\n🔍 Retrieving for: {args.query}")
@@ -160,19 +158,19 @@ if __name__ == "__main__":
         args.query,
         target_model=args.target_model,
         top_k=args.top_k,
-        model_specific_only=args.model_only
+        model_specific_only=args.model_only,
     )
-    
+
     print(f"✅ Retrieved {len(chunks)} chunks\n")
     for i, ch in enumerate(chunks, start=1):
-        model = ch.metadata.get('target_model')
-        src = ch.metadata.get('source', 'unknown')[:40]
+        model = ch.metadata.get("target_model")
+        src = ch.metadata.get("source", "unknown")[:40]
         print(f"#{i} score={ch.score:.4f} dist={ch.distance:.4f} model={model} src={src}...")
-    
+
     if args.print_context:
         print("\n📝 Formatted Context:\n")
         context = format_context(chunks, args.target_model)
         print(context)
-    
+
     print("\n📊 Knowledge Base Stats:")
     print(get_retrieval_stats())

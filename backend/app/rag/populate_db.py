@@ -1,16 +1,23 @@
 import json
 import os
-from typing import List
 
-from .vector_store import add_documents, init_client, get_or_create_collection
+from .vector_store import add_documents
+
+DATA_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "..",
+    "services",
+    "ingest",
+    "data",
+    "all_guidelines.jsonl",
+)
 
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'services', 'ingest', 'data', 'all_guidelines.jsonl')
-
-
-def load_items(path: str) -> List[dict]:
+def load_items(path: str) -> list[dict]:
     out = []
-    with open(path, 'r', encoding='utf-8') as fh:
+    with open(path, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -20,25 +27,28 @@ def load_items(path: str) -> List[dict]:
     return out
 
 
-def run(populate_all: bool = True, limit: int = None):
+def run(populate_all: bool = True, limit: int | None = None):
     items = load_items(DATA_PATH)
     if limit:
         items = items[:limit]
 
-    texts = [it['input_prompt'] for it in items]
-    metadatas = [{
-        'source': it.get('source'),
-        'chunk_id': it.get('chunk_id'),
-        'created_at': it.get('created_at'),
-        'target_model': it.get('target_model')
-    } for it in items]
-    ids = [it.get('chunk_id') for it in items]
+    texts = [it["input_prompt"] for it in items]
+    metadatas = [
+        {
+            "source": it.get("source"),
+            "chunk_id": it.get("chunk_id"),
+            "created_at": it.get("created_at"),
+            "target_model": it.get("target_model"),
+        }
+        for it in items
+    ]
+    ids = [it.get("chunk_id") for it in items]
 
-    print(f'Adding {len(texts)} documents to ChromaDB...')
+    print(f"Adding {len(texts)} documents to ChromaDB...")
     add_documents(texts, metadatas, ids=ids)
-    print('Done')
+    print("Done")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # default: populate all
     run()

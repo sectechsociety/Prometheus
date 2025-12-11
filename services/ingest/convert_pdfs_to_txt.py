@@ -5,8 +5,8 @@ Usage:
 
 This is a small helper used before running the ingest pipeline when sources are PDFs.
 """
+
 import argparse
-import os
 from pathlib import Path
 
 try:
@@ -51,10 +51,10 @@ def main():
             print(f"No text extracted from {pdf}, skipping.")
             continue
         out_path = out / (pdf.stem + ".txt")
-        with open(out_path, 'w', encoding='utf-8') as fh:
+        with open(out_path, "w", encoding="utf-8") as fh:
             fh.write(txt)
         print(f"Wrote {out_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

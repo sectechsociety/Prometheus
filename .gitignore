@@ -4,7 +4,7 @@
 __pycache__
 *.pyc
 .DS_Store
-/.github
+# /.github  <-- We want to track github workflows
 # Large model files (download separately or retrain)
 backend/app/model/prometheus_lora_adapter/*.safetensors
 backend/app/model/prometheus_lora_adapter/tokenizer.model
@@ -18,3 +18,12 @@ backend/=0.44.1
 # ChromaDB binary files (can be regenerated)
 backend/services/ingest/chroma_db/
 services/ingest/chroma_db/
+*.sqlite3
+
+# Test artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+

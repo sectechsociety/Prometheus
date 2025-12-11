@@ -1,0 +1,33 @@
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+exclude = "backend/app/model/prometheus_lora_adapter|services/ingest/chroma_db|backend/.venv"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["backend/app", "services/ingest"]
+extend-exclude = [
+    "backend/app/model/prometheus_lora_adapter",
+    "services/ingest/chroma_db",
+    "backend/.venv",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "backend/app/model/prometheus_lora_adapter",
+    "services/ingest/chroma_db",
+    "backend/.venv"
+]
+
