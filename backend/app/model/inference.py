@@ -42,46 +42,12 @@ class PrometheusLightModel:
         logger.info(f"📊 LoRA rank: {self.adapter_config.get('r', 'N/A')}")
         logger.info(f"📊 LoRA alpha: {self.adapter_config.get('lora_alpha', 'N/A')}")
 
-        # Load training insights (you can add your training dataset patterns here)
-        self._load_training_patterns()
-
         logger.info("✅ Lightweight model loaded successfully!")
-
-    def _load_training_patterns(self):
-        """Load patterns learned during training."""
-        # These patterns are extracted from your 1000-example training data
-        self.enhancement_patterns = {
-            "ChatGPT": {
-                "structure": [
-                    "clear context",
-                    "step-by-step breakdown",
-                    "examples",
-                    "best practices",
-                ],
-                "tone": "structured and methodical",
-                "format": "bullet points and numbered lists",
-            },
-            "Claude": {
-                "structure": ["XML tags", "detailed analysis", "reasoning", "edge cases"],
-                "tone": "thoughtful and analytical",
-                "format": "XML-structured with clear sections",
-            },
-            "Gemini": {
-                "structure": [
-                    "visual elements",
-                    "practical examples",
-                    "multimodal hints",
-                    "resources",
-                ],
-                "tone": "creative and accessible",
-                "format": "emoji headers and visual organization",
-            },
-        }
 
     def enhance_prompt(
         self,
         raw_prompt: str,
-        target_model: str = "ChatGPT",
+        prompt_type: str,
         rag_context: str | None = None,
         max_new_tokens: int = 256,
         temperature: float = 0.7,
@@ -89,11 +55,11 @@ class PrometheusLightModel:
         num_return_sequences: int = 1,
     ) -> list[str]:
         """
-        Generate enhanced prompts using learned patterns + RAG context.
+        Generate enhanced prompts using detected prompt type + RAG context.
 
         Args:
             raw_prompt: Original user prompt
-            target_model: Target AI model (ChatGPT/Claude/Gemini)
+            prompt_type: Detected prompt type (code, analysis, explain, creative, summarize, troubleshoot, other)
             rag_context: Retrieved guidelines context (optional)
             max_new_tokens: Maximum tokens to generate (unused)
             temperature: Sampling temperature (affects variation)
@@ -103,19 +69,14 @@ class PrometheusLightModel:
         Returns:
             List of enhanced prompts
         """
-        logger.info(f"🎯 Generating {num_return_sequences} enhanced prompts for {target_model}")
+        logger.info(f"🎯 Generating {num_return_sequences} enhanced prompts for type={prompt_type}")
 
-        # Get model-specific patterns
-        patterns = self.enhancement_patterns.get(target_model, self.enhancement_patterns["ChatGPT"])
-
-        # Generate variations using learned patterns + RAG
         enhanced_prompts = []
         for i in range(num_return_sequences):
             enhanced = self._generate_enhanced_prompt(
                 raw_prompt,
-                target_model,
+                prompt_type,
                 rag_context,
-                patterns,
                 variation_index=i,
                 temperature=temperature,
             )
@@ -127,13 +88,12 @@ class PrometheusLightModel:
     def _generate_enhanced_prompt(
         self,
         raw_prompt: str,
-        target_model: str,
+        prompt_type: str,
         rag_context: str | None,
-        patterns: dict,
         variation_index: int,
         temperature: float,
     ) -> str:
-        """Generate a single enhanced prompt using patterns + RAG."""
+        """Generate a single enhanced prompt using prompt_type + RAG."""
 
         # Base enhancement using RAG context if available
         if rag_context:
@@ -142,168 +102,237 @@ class PrometheusLightModel:
         else:
             guidelines_text = ""
 
-        # Model-specific templates inspired by training data
-        if target_model == "ChatGPT":
-            return self._enhance_for_chatgpt(raw_prompt, guidelines_text, variation_index)
-        elif target_model == "Claude":
-            return self._enhance_for_claude(raw_prompt, guidelines_text, variation_index)
-        elif target_model == "Gemini":
-            return self._enhance_for_gemini(raw_prompt, guidelines_text, variation_index)
-        else:
-            return self._enhance_for_chatgpt(raw_prompt, guidelines_text, variation_index)
+        def _enhance_by_type(
+            self, raw_prompt: str, prompt_type: str, guidelines: str, variation: int
+        ) -> str:
+            """Type-driven templates (no model-specific branching)."""
 
-    def _enhance_for_chatgpt(self, raw_prompt: str, guidelines: str, variation: int) -> str:
-        """ChatGPT-optimized enhancement (learned from training data)."""
-        g1 = f"Guidelines to follow:\n{guidelines}" if guidelines else ""
-        g2 = f"Please consider these guidelines:\n{guidelines}" if guidelines else ""
-        g3 = f"Context:\n{guidelines}" if guidelines else ""
+            g = f"Guidelines to consider:\n{guidelines}\n" if guidelines else ""
 
-        templates = [
-            f"""Task: {raw_prompt}
+            templates_by_type = {
+                "code": [
+                    f"""Task: {raw_prompt}
 
-Please provide a comprehensive response with:
+    Please produce:
+    1) **Goal**: Restate the coding objective
+    2) **Plan**: Step-by-step approach
+    3) **Example**: Show a working snippet
+    4) **Edge Cases**: List tricky inputs
+    5) **Pitfalls**: Common mistakes to avoid
 
-1. **Clear Explanation**: Break down the concept step-by-step
-2. **Practical Examples**: Include real-world code/use cases
-3. **Best Practices**: Highlight recommended approaches
-4. **Common Pitfalls**: Note potential issues to avoid
+    {g}
+    Format with code blocks and concise bullets.""",
+                    f"""Help with code: {raw_prompt}
 
-{g1}
+    Include:
+    - Clear function/entrypoint design
+    - Minimal reproducible example
+    - Comments on complexity and constraints
+    - Tests or quick checks to validate
 
-Format your response with clear sections and code blocks where applicable.""",
-            f"""I need help with: {raw_prompt}
+    {g}
+    Keep it short and actionable.""",
+                    f"""Problem: {raw_prompt}
 
-Requirements:
-• Provide a structured, step-by-step explanation
-• Include practical examples with code snippets
-• Explain the reasoning behind each step
-• Highlight best practices and common mistakes
-• Use clear headings for easy navigation
+    Deliver:
+    - Overview of the approach
+    - Implementation steps
+    - A runnable snippet
+    - Debug tips and logging points
 
-{g2}""",
-            f"""Help me understand: {raw_prompt}
+    {g}
+    Prefer clarity over brevity if trade-offs arise.""",
+                ],
+                "analysis": [
+                    f"""Analyze: {raw_prompt}
 
-Please explain:
-- Core concepts in simple terms
-- Step-by-step implementation guide
-- Working examples with explanations
-- Best practices and optimization tips
-- Common errors and how to avoid them
+    Provide:
+    - Objective and criteria
+    - Comparison of options with pros/cons
+    - Recommendation with rationale
+    - Risks and mitigations
 
-{g3}
+    {g}
+    Use crisp bullets and cite trade-offs explicitly.""",
+                    f"""Request: {raw_prompt}
 
-Make it practical and actionable.""",
-        ]
-        return templates[variation % len(templates)]
+    Structure:
+    1) Context and assumptions
+    2) Options considered
+    3) Evidence for/against each
+    4) Decision and next steps
 
-    def _enhance_for_claude(self, raw_prompt: str, guidelines: str, variation: int) -> str:
-        """Claude-optimized enhancement (uses XML, thoughtful analysis)."""
-        g1 = f"<guidelines>\n{guidelines}\n</guidelines>" if guidelines else ""
-        g2 = f"<context>\n{guidelines}\n</context>" if guidelines else ""
-        g3 = f"<guidelines>\n{guidelines}\n</guidelines>" if guidelines else ""
+    {g}
+    Keep it concise and decision-ready.""",
+                    f"""Evaluate: {raw_prompt}
 
-        templates = [
-            f"""<task>
-{raw_prompt}
-</task>
+    Cover:
+    - Key factors that matter
+    - Short scoring or ranking
+    - Edge cases or failure modes
+    - Final guidance
 
-<instructions>
-Please provide a thorough analysis:
+    {g}
+    Prefer clarity; avoid fluff.""",
+                ],
+                "explain": [
+                    f"""Explain: {raw_prompt}
 
-1. **Problem Analysis**: Break down requirements and objectives
-2. **Approach**: Systematic solution with clear reasoning
-3. **Implementation**: Detailed step-by-step guidance
-4. **Considerations**: Assumptions, limitations, best practices
-</instructions>
+    Include:
+    - Plain-language overview
+    - Step-by-step breakdown
+    - Simple example or analogy
+    - Common pitfalls or misconceptions
 
-{g1}
+    {g}
+    Keep it beginner-friendly and structured.""",
+                    f"""Topic: {raw_prompt}
 
-<format>
-Use clear headings and explain your reasoning at each step.
-</format>""",
-            f"""<request>
-{raw_prompt}
-</request>
+    Cover:
+    1) What it is
+    2) Why it matters
+    3) How it works (simple steps)
+    4) One practical example
 
-Please approach this systematically:
+    {g}
+    Use short paragraphs and bullets.""",
+                    f"""Help me understand: {raw_prompt}
 
-<analysis>
-- Clarify core objectives and implicit requirements
-- Consider different approaches and trade-offs  
-- Note constraints and assumptions
-</analysis>
+    Provide:
+    - Core concepts
+    - Mini walkthrough
+    - Quick example
+    - Tips to remember
 
-<solution>
-- Provide detailed implementation guidance
-- Include practical examples
-- Explain reasoning and thought process
-- Highlight edge cases and alternatives
-</solution>
+    {g}
+    Make it concise and clear.""",
+                ],
+                "creative": [
+                    f"""Creative prompt: {raw_prompt}
 
-{g2}""",
-            f"""I need assistance with: {raw_prompt}
+    Deliver:
+    - 2-3 distinct ideas
+    - Tone/voice suggestions
+    - Audience/setting notes
+    - One polished example
 
-<requirements>
-• Be thorough and precise in explanations
-• Include practical, working examples
-• Explain reasoning and thought process
-• Note assumptions being made
-• Highlight edge cases or potential issues
-• Suggest alternatives where applicable
-</requirements>
+    {g}
+    Be vivid but concise.""",
+                    f"""Brainstorm for: {raw_prompt}
 
-{g3}
+    Provide:
+    - Short idea list
+    - One expanded draft
+    - Variation on style or audience
 
-<output>
-Organize response with structured sections and clear explanations.
-</output>""",
-        ]
-        return templates[variation % len(templates)]
+    {g}
+    Keep energy high and specific.""",
+                    f"""Generate options for: {raw_prompt}
 
-    def _enhance_for_gemini(self, raw_prompt: str, guidelines: str, variation: int) -> str:
-        """Gemini-optimized enhancement (visual, creative, practical)."""
-        g1 = f"📚 **Guidelines**\n{guidelines}" if guidelines else ""
-        g2 = f"**Context:**\n{guidelines}" if guidelines else ""
-        g3 = f"📋 **Reference Guidelines:**\n{guidelines}" if guidelines else ""
+    Return:
+    - Headline/lead
+    - Supporting lines
+    - Alt style (serious vs playful)
 
-        templates = [
-            f"""Help me with: {raw_prompt}
+    {g}
+    Focus on memorable phrasing.""",
+                ],
+                "summarize": [
+                    f"""Summarize: {raw_prompt}
 
-Please provide:
+    Produce:
+    - 3-5 bullet key points
+    - One-line takeaway
+    - Action items if relevant
 
-🎯 **Objective**
-- What we're trying to achieve
-- Why this approach matters
+    {g}
+    Be concise; avoid repetition.""",
+                    f"""Need a TL;DR for: {raw_prompt}
 
-📋 **Step-by-Step Guide**
-- Clear, actionable instructions
-- Code examples and explanations
+    Include:
+    - Core facts
+    - Implications
+    - Risks/unknowns
 
-💡 **Practical Examples**
-- Real-world use cases
-- Working demonstrations
+    {g}
+    Max 120 words.""",
+                    f"""Condense this: {raw_prompt}
 
-✅ **Best Practices**
-- Tips for success
-- Common mistakes to avoid
+    Provide:
+    - Top insights
+    - Supporting evidence
+    - Any caveats
 
-{g1}""",
-            f"""**Task:** {raw_prompt}
+    {g}
+    Prioritize clarity.""",
+                ],
+                "troubleshoot": [
+                    f"""Troubleshoot: {raw_prompt}
 
-**What I need:**
+    Return:
+    - Quick diagnosis checklist
+    - Likely root causes
+    - Steps to verify/fix
+    - What to log/inspect
 
-1. **Clear Breakdown**: Explain concepts simply
-2. **Real Examples**: Practical, relatable cases
-3. **Implementation**: Step-by-step with code
-4. **Visual Aids**: Tables/lists for organization
-5. **Best Practices**: Proven approaches
+    {g}
+    Be direct and ordered.""",
+                    f"""Issue: {raw_prompt}
 
-{g2}
+    Include:
+    - Symptoms recap
+    - Minimal repro steps
+    - Hypotheses ranked by likelihood
+    - Fix or mitigation steps
 
-**Goal:** Give me actionable understanding I can apply immediately.""",
-            f"""I'm working on: {raw_prompt}
+    {g}
+    Keep it crisp.""",
+                    f"""Debug this: {raw_prompt}
 
-🌟 **Overview**
+    Respond with:
+    - Checks to run
+    - Tools/commands to use
+    - What success looks like
+    - Escalation paths if unresolved
+
+    {g}
+    Prefer short bullets.""",
+                ],
+                "other": [
+                    f"""Task: {raw_prompt}
+
+    Please provide a clear, structured response with:
+    - Objective
+    - Step-by-step approach
+    - Examples or illustrations
+    - Risks/pitfalls
+
+    {g}
+    Keep it concise and actionable.""",
+                    f"""Request: {raw_prompt}
+
+    Deliver:
+    - Brief overview
+    - Concrete steps
+    - One example
+    - Tips or cautions
+
+    {g}
+    Focus on clarity.""",
+                    f"""Help with: {raw_prompt}
+
+    Include:
+    - What success looks like
+    - How to achieve it (ordered steps)
+    - Common mistakes
+
+    {g}
+    Short bullets are fine.""",
+                ],
+            }
+
+            templates = templates_by_type.get(prompt_type, templates_by_type["other"])
+            return templates[variation % len(templates)]
 - Quick context and background
 - Why this is useful
 

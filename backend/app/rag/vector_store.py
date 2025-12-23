@@ -4,8 +4,8 @@ from .embeddings import batch_generate_embeddings, generate_embedding
 
 COLLECTION_NAME = "prometheus_guidelines"
 
-# Model-specific retrieval boost: prioritize exact model matches
-MODEL_PRIORITY_BOOST = 0.2  # 20% boost for matching target_model
+# Prompt-type retrieval boost: prioritize guidelines matching detected prompt_type
+MODEL_PRIORITY_BOOST = 0.2  # 20% boost for matching prompt_type
 
 
 def init_client(persist: bool = True):
@@ -50,49 +50,34 @@ def add_documents(doc_texts: list[str], metadatas: list[dict], ids: list[str] | 
 
 
 def search(
-    query: str, top_k: int = 5, target_model: str | None = None, model_specific_only: bool = False
+    query: str,
+    top_k: int = 5,
+    prompt_type: str | None = None,
+    prompt_type_only: bool = False,
 ) -> dict:
-    """
-    Search with model-specific prioritization.
-
-    Args:
-        query: User's raw prompt
-        top_k: Number of results to return
-        target_model: Target model (ChatGPT, Gemini, Claude)
-        model_specific_only: If True, only return guidelines for target_model
-
-    Returns:
-        Results dict with model-aware scoring
-    """
+    """Search with prompt-type prioritization (no user-selected model needed)."""
     client = init_client()
     coll = get_or_create_collection(client)
     query_emb = generate_embedding(query)
 
-    if model_specific_only and target_model:
-        # Strict filtering: only return guidelines for this model
-        filter_dict = {"target_model": target_model}
+    if prompt_type_only and prompt_type:
+        # Strict filtering: only return guidelines for this prompt type
+        filter_dict = {"prompt_type": prompt_type}
         results = coll.query(query_embeddings=[query_emb], n_results=top_k, where=filter_dict)
     else:
         # Soft filtering: retrieve more results, then re-rank with model priority
         fetch_k = min(top_k * 3, 50)  # Over-fetch for re-ranking, cap at 50
         results = coll.query(query_embeddings=[query_emb], n_results=fetch_k)
 
-        if target_model:
-            # Re-rank: boost scores for matching target_model
-            results = _rerank_by_model(results, target_model, top_k)
+        if prompt_type:
+            # Re-rank: boost scores for matching prompt_type
+            results = _rerank_by_prompt_type(results, prompt_type, top_k)
 
     return results
 
 
-def _rerank_by_model(results: dict, target_model: str, top_k: int) -> dict:
-    """
-    Re-rank results to prioritize target_model guidelines.
-
-    Strategy:
-    1. Convert distances to similarity scores
-    2. Apply boost to matching models
-    3. Re-sort and return top_k
-    """
+def _rerank_by_prompt_type(results: dict, prompt_type: str, top_k: int) -> dict:
+    """Re-rank results to prioritize guidelines matching the detected prompt_type."""
     if not results["ids"] or not results["ids"][0]:
         return results
 
@@ -106,8 +91,8 @@ def _rerank_by_model(results: dict, target_model: str, top_k: int) -> dict:
     for i, (id_, doc, meta, dist) in enumerate(zip(ids, documents, metadatas, distances, strict=False)):
         base_score = 1 / (1 + dist)  # Convert distance to similarity
 
-        # Boost if model matches
-        if meta.get("target_model") == target_model:
+        # Boost if prompt_type matches
+        if meta.get("prompt_type") == prompt_type:
             boosted_score = base_score * (1 + MODEL_PRIORITY_BOOST)
         else:
             boosted_score = base_score
@@ -139,17 +124,16 @@ def _rerank_by_model(results: dict, target_model: str, top_k: int) -> dict:
 
 
 def get_model_statistics() -> dict[str, int]:
-    """Return count of guidelines per model for monitoring."""
+    """Return count of guidelines per prompt_type for monitoring."""
     client = init_client()
     coll = get_or_create_collection(client)
 
     all_docs = coll.get()
-    stats = {"ChatGPT": 0, "Gemini": 0, "Claude": 0, "total": len(all_docs["ids"])}
+    stats: dict[str, int] = {"total": len(all_docs["ids"])}
 
-    for meta in all_docs["metadatas"]:
-        model = meta.get("target_model", "unknown")
-        if model in stats:
-            stats[model] += 1
+    for meta in all_docs.get("metadatas", []):
+        ptype = meta.get("prompt_type", "unknown")
+        stats[ptype] = stats.get(ptype, 0) + 1
 
     return stats
 
@@ -165,9 +149,11 @@ class VectorStore:
         """Get the ChromaDB collection."""
         return self.collection
 
-    def search(self, query: str, top_k: int = 5, target_model: str | None = None):
-        """Search for similar documents."""
-        return search(query, top_k, target_model)
+    def search(
+        self, query: str, top_k: int = 5, prompt_type: str | None = None, prompt_type_only: bool = False
+    ):
+        """Search for similar documents by prompt type."""
+        return search(query=query, top_k=top_k, prompt_type=prompt_type, prompt_type_only=prompt_type_only)
 
     def add_documents(
         self, doc_texts: list[str], metadatas: list[dict], ids: list[str] | None = None

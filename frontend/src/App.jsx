@@ -34,20 +34,20 @@ export default function App(){
     setTheme(prev => prev === 'dark' ? 'light' : 'dark')
   }
 
-  async function handleSubmit({ raw, model, numVariations = 3 }){
+  async function handleSubmit({ raw, numVariations = 3 }){
     setLoading(true)
     setError(null)
     setMetadata(null)
     
     try{
-      const data = await augment(raw, model, numVariations)
+      const data = await augment(raw, numVariations)
       
       // Set enhanced prompts
       setResults(data.enhanced_prompts || [])
       
       // Store metadata for display
       setMetadata({
-        targetModel: data.target_model,
+        detectedType: data.detected_prompt_type,
         modelType: data.model_type,
         ragUsed: data.rag_context_used,
         ragChunks: data.rag_chunks_count,
@@ -98,8 +98,8 @@ export default function App(){
         {metadata && !loading && (
           <div className="metadata-panel">
             <div className="metadata-item">
-              <span className="metadata-label">Target Model:</span>
-              <span className="metadata-value">{metadata.targetModel}</span>
+              <span className="metadata-label">Detected Type:</span>
+              <span className="metadata-value">{metadata.detectedType}</span>
             </div>
             <div className="metadata-item">
               <span className="metadata-label">Powered by:</span>

@@ -15,14 +15,14 @@ function mockAugmentPlugin(){
             try{
               const payload = JSON.parse(body || '{}')
               const raw = payload.raw_prompt || ''
-              const model = payload.target_model || 'default'
+              const detectedType = 'mock-type'
               const enhanced = [
-                `[ENHANCED for ${model}] ${raw}`,
+                `[ENHANCED for ${detectedType}] ${raw}`,
                 `Be specific: ${raw}`,
                 `Add format and constraints: ${raw} (JSON, steps, time, audience)`
               ]
               res.setHeader('Content-Type', 'application/json')
-              res.end(JSON.stringify({ enhanced_prompts: enhanced }))
+              res.end(JSON.stringify({ enhanced_prompts: enhanced, detected_prompt_type: detectedType }))
             }catch(e){
               res.statusCode = 400
               res.end('Invalid JSON')

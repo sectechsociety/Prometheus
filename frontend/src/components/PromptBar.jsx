@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 
 export default function PromptBar({ onSubmit, loading }){
   const [raw, setRaw] = useState('')
-  const [model, setModel] = useState('ChatGPT')
   const [numVariations, setNumVariations] = useState(3)
   
   const MAX_CHARS = 2000
@@ -13,7 +12,7 @@ export default function PromptBar({ onSubmit, loading }){
   function handleSubmit(e){
     e.preventDefault()
     if (!raw.trim() || isOverLimit) return
-    onSubmit({ raw, model, numVariations })
+    onSubmit({ raw, numVariations })
   }
 
   return (
@@ -40,18 +39,6 @@ export default function PromptBar({ onSubmit, loading }){
       </div>
 
       <div className="prompt-controls">
-        <select 
-          className="model-select" 
-          value={model} 
-          onChange={e=>setModel(e.target.value)}
-          disabled={loading}
-          style={{fontFamily: 'Montserrat, sans-serif'}}
-        >
-          <option value="ChatGPT" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 500}}>ChatGPT</option>
-          <option value="Claude" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 500}}>Claude</option>
-          <option value="Gemini" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 500}}>Gemini</option>
-        </select>
-
         <select 
           className="variations-select" 
           value={numVariations} 

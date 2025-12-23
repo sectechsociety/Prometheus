@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 # Import our modules
 from .model.inference import get_model
+from .rag.prompt_classifier import classify_prompt
 from .rag.retriever import format_context, retrieve_context
 
 # Configure logging
@@ -93,10 +94,9 @@ class AugmentRequest(BaseModel):
     """Request to enhance a prompt."""
 
     raw_prompt: str = Field(..., min_length=1, max_length=2000, description="Original user prompt")
-    target_model: str = Field(
-        default="ChatGPT",
-        pattern="^(ChatGPT|Claude|Gemini)$",
-        description="Target AI model (ChatGPT, Claude, or Gemini)",
+    target_model: str | None = Field(
+        default=None,
+        description="(Deprecated) Previously used to select ChatGPT/Claude/Gemini. Ignored now.",
     )
     num_variations: int = Field(
         default=3, ge=1, le=5, description="Number of enhanced prompt variations to generate (1-5)"
@@ -114,7 +114,7 @@ class AugmentResponse(BaseModel):
     """Enhanced prompt response."""
 
     enhanced_prompts: list[str] = Field(..., description="List of enhanced prompts")
-    target_model: str = Field(..., description="Target model used for enhancement")
+    detected_prompt_type: str = Field(..., description="Detected prompt type used for enhancement")
     original_prompt: str = Field(..., description="Original input prompt")
     rag_context_used: bool = Field(..., description="Whether RAG context was retrieved and used")
     rag_chunks_count: int = Field(default=0, description="Number of RAG chunks retrieved")
@@ -146,7 +146,7 @@ async def augment_prompt(request: AugmentRequest):
     4. Return results with metadata
 
     Args:
-        request: AugmentRequest with raw_prompt, target_model, etc.
+        request: AugmentRequest with raw_prompt, num_variations, etc.
 
     Returns:
         AugmentResponse with enhanced prompts and metadata
@@ -154,10 +154,14 @@ async def augment_prompt(request: AugmentRequest):
     try:
         logger.info("=" * 60)
         logger.info("📝 Augmentation request received")
-        logger.info(f"   Target model: {request.target_model}")
         logger.info(f"   Variations: {request.num_variations}")
         logger.info(f"   RAG enabled: {request.use_rag}")
         logger.info(f"   Prompt: {request.raw_prompt[:100]}...")
+
+        # Step 0: Detect prompt type
+        classification = classify_prompt(request.raw_prompt)
+        prompt_type = classification.prompt_type
+        logger.info(f"   Detected prompt_type: {prompt_type} (conf {classification.confidence:.2f})")
 
         # Step 1: Retrieve context from RAG (optional)
         rag_context_used = False
@@ -170,7 +174,7 @@ async def augment_prompt(request: AugmentRequest):
 
                 # Retrieve relevant guidelines
                 chunks = retrieve_context(
-                    query=request.raw_prompt, target_model=request.target_model, top_k=5
+                    query=request.raw_prompt, prompt_type=prompt_type, top_k=5
                 )
 
                 if chunks:
@@ -200,7 +204,7 @@ async def augment_prompt(request: AugmentRequest):
 
         enhanced_prompts = model.enhance_prompt(
             raw_prompt=request.raw_prompt,
-            target_model=request.target_model,
+            prompt_type=prompt_type,
             rag_context=context_text if context_text else None,
             num_return_sequences=request.num_variations,
             temperature=request.temperature,
@@ -215,7 +219,7 @@ async def augment_prompt(request: AugmentRequest):
 
         return AugmentResponse(
             enhanced_prompts=enhanced_prompts,
-            target_model=request.target_model,
+            detected_prompt_type=prompt_type,
             original_prompt=request.raw_prompt,
             rag_context_used=rag_context_used,
             rag_chunks_count=rag_chunks_count,

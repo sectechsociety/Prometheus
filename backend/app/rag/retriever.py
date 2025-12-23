@@ -48,16 +48,16 @@ def _build_items(results: dict[str, Any]) -> list[RetrievedChunk]:
 
 
 def retrieve_context(
-    query: str, target_model: str | None = None, top_k: int = 5, model_specific_only: bool = False
+    query: str, prompt_type: str | None = None, top_k: int = 5, prompt_type_only: bool = False
 ) -> list[RetrievedChunk]:
     """
     Retrieve model-specific context for prompt enhancement.
 
     Args:
         query: User's raw prompt
-        target_model: Target AI model (ChatGPT, Gemini, Claude)
+        prompt_type: Detected prompt type (code, analysis, explain, creative, summarize, troubleshoot)
         top_k: Number of guidelines to retrieve
-        model_specific_only: If True, only use guidelines for target_model
+        prompt_type_only: If True, only use guidelines for prompt_type
 
     Returns:
         List of relevant guideline chunks with metadata
@@ -65,13 +65,13 @@ def retrieve_context(
     Example:
         >>> chunks = retrieve_context(
         ...     "Explain quantum computing",
-        ...     target_model="Claude",
+        ...     prompt_type="analysis",
         ...     top_k=5
         ... )
-        >>> print(f"Retrieved {len(chunks)} Claude-prioritized guidelines")
+        >>> print(f"Retrieved {len(chunks)} type-prioritized guidelines")
     """
     res = search(
-        query=query, top_k=top_k, target_model=target_model, model_specific_only=model_specific_only
+        query=query, top_k=top_k, prompt_type=prompt_type, prompt_type_only=prompt_type_only
     )
     return _build_items(res)
 

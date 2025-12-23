@@ -6,15 +6,13 @@ const BASE = API_BASE_URL
  * Enhance a raw prompt using the Prometheus API
  * 
  * @param {string} rawPrompt - The original user prompt to enhance
- * @param {string} targetModel - Target AI model (ChatGPT, Claude, or Gemini)
  * @param {number} numVariations - Number of enhanced variations to generate (1-5)
  * @param {number} temperature - Sampling temperature (0.0-1.0, higher = more creative)
  * @param {boolean} useRag - Whether to include RAG context from knowledge base
  * @returns {Promise<Object>} Response with enhanced prompts and metadata
  */
 export async function augment(
-  rawPrompt, 
-  targetModel = 'ChatGPT',
+  rawPrompt,
   numVariations = 3,
   temperature = 0.7,
   useRag = true
@@ -23,7 +21,6 @@ export async function augment(
   
   const payload = {
     raw_prompt: rawPrompt,
-    target_model: targetModel,
     num_variations: numVariations,
     temperature: temperature,
     use_rag: useRag

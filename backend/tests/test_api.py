@@ -18,7 +18,7 @@ class DummyModel:
     def enhance_prompt(
         self,
         raw_prompt: str,
-        target_model: str = "ChatGPT",
+        prompt_type: str,
         rag_context=None,
         max_new_tokens: int = 256,
         temperature: float = 0.7,
@@ -66,7 +66,6 @@ def test_health_endpoint(client):
 def test_augment_basic(client):
     payload = {
         "raw_prompt": "Explain machine learning",
-        "target_model": "ChatGPT",
         "num_variations": 2,
         "use_rag": False,
     }
@@ -77,6 +76,7 @@ def test_augment_basic(client):
     assert len(data["enhanced_prompts"]) == 2
     assert data["model_type"] == "mock"
     assert data["rag_context_used"] is False
+    assert data["detected_prompt_type"]
 
 
 def test_augment_validates_model_name(client):

@@ -144,8 +144,8 @@ Toggle theme with the button in the top-right corner.
 ### Backend Endpoints Used
 
 1. **POST /augment**
-   - Request: `{ raw_prompt, target_model, num_variations }`
-   - Response: `{ enhanced_prompts, target_model, original_prompt }`
+  - Request: `{ raw_prompt, num_variations }`
+  - Response: `{ enhanced_prompts, detected_prompt_type, original_prompt }`
 
 2. **GET /health**
    - Response: `{ status, model_loaded, version }`
@@ -153,13 +153,9 @@ Toggle theme with the button in the top-right corner.
 ### Example Usage
 
 ```javascript
-import { augmentPrompt } from './api/augment';
+import { augment } from './api/augment';
 
-const result = await augmentPrompt({
-  raw_prompt: "Write a function to calculate fibonacci",
-  target_model: "chatgpt",
-  num_variations: 3
-});
+const result = await augment("Write a function to calculate fibonacci", 3);
 
 console.log(result.enhanced_prompts); // Array of 3 enhanced prompts
 ```

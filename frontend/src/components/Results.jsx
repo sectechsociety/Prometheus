@@ -31,7 +31,7 @@ export default function Results({ items = [], loading, metadata }){
     
     if (metadata) {
       textContent += `Generated: ${new Date().toLocaleString()}\n`
-      textContent += `Target Model: ${metadata.targetModel || 'N/A'}\n`
+      textContent += `Detected Type: ${metadata.detectedType || 'N/A'}\n`
       textContent += `Original Prompt: ${metadata.originalPrompt || 'N/A'}\n`
       if (metadata.ragUsed) {
         textContent += `RAG Guidelines: ${metadata.ragChunks || 0} retrieved\n`
