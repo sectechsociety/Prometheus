@@ -2,6 +2,7 @@ import json
 import os
 
 from .vector_store import add_documents
+from .prompt_classifier import classify_prompt
 
 DATA_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -33,15 +34,19 @@ def run(populate_all: bool = True, limit: int | None = None):
         items = items[:limit]
 
     texts = [it["input_prompt"] for it in items]
-    metadatas = [
-        {
-            "source": it.get("source"),
-            "chunk_id": it.get("chunk_id"),
-            "created_at": it.get("created_at"),
-            "target_model": it.get("target_model"),
-        }
-        for it in items
-    ]
+    metadatas = []
+
+    for it in items:
+        cls = classify_prompt(it.get("input_prompt", ""))
+        metadatas.append(
+            {
+                "source": it.get("source"),
+                "chunk_id": it.get("chunk_id"),
+                "created_at": it.get("created_at"),
+                "prompt_type": cls.prompt_type,
+                "target_model": it.get("target_model"),  # kept for backward compatibility
+            }
+        )
     ids = [it.get("chunk_id") for it in items]
 
     print(f"Adding {len(texts)} documents to ChromaDB...")

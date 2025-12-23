@@ -38,12 +38,62 @@ def classify_prompt(raw_prompt: str) -> PromptClassification:
     text = raw_prompt.strip()
     reasons: List[str] = []
 
-    code_patterns = [r"\bcode\b", r"\bsnippet\b", r"\bpython\b", r"\bjavascript\b", r"\bbug\b", r"\brefactor\b"]
-    analysis_patterns = [r"compare", r"evaluate", r"analy[sz]e", r"trade[- ]?offs", r"pros and cons"]
-    explain_patterns = [r"explain", r"what is", r"how does", r"walk me through", r"overview"]
-    creative_patterns = [r"story", r"poem", r"creative", r"brainstorm", r"ideas", r"tagline", r"slogan"]
-    summarize_patterns = [r"summari[sz]e", r"tl;dr", r"condense", r"bullet points", r"key points"]
-    troubleshoot_patterns = [r"error", r"exception", r"why fails", r"not working", r"fix", r"diagnos"]
+    code_patterns = [
+        r"\bcode\b",
+        r"\bsnippet\b",
+        r"\bpython\b",
+        r"\bjavascript\b",
+        r"\bbug\b",
+        r"\brefactor\b",
+        r"stacktrace",
+        r"traceback",
+        r"\blog\b",
+    ]
+    analysis_patterns = [
+        r"compare",
+        r"evaluate",
+        r"analy[sz]e",
+        r"trade[- ]?offs",
+        r"pros and cons",
+        r"which is better",
+        r"choose between",
+    ]
+    explain_patterns = [
+        r"explain",
+        r"what is",
+        r"how does",
+        r"walk me through",
+        r"overview",
+        r"define",
+    ]
+    creative_patterns = [
+        r"story",
+        r"poem",
+        r"creative",
+        r"brainstorm",
+        r"ideas",
+        r"tagline",
+        r"slogan",
+        r"script",
+        r"lyrics",
+    ]
+    summarize_patterns = [
+        r"summari[sz]e",
+        r"tl;dr",
+        r"condense",
+        r"bullet points",
+        r"key points",
+        r"short version",
+    ]
+    troubleshoot_patterns = [
+        r"error",
+        r"exception",
+        r"why fails",
+        r"not working",
+        r"fix",
+        r"diagnos",
+        r"fail(s|ed)?",
+    ]
 
     if _match_any(text, code_patterns):
         reasons.append("code-related keywords detected")
@@ -64,10 +114,15 @@ def classify_prompt(raw_prompt: str) -> PromptClassification:
         reasons.append("explanation keywords detected")
         prompt_type = "explain"
     else:
-        prompt_type = "other"
-        reasons.append("no strong keyword match; defaulting to 'other'")
+        # Heuristic for very short prompts: default to explain
+        if len(text.split()) <= 5:
+            prompt_type = "explain"
+            reasons.append("short prompt; defaulting to explain")
+        else:
+            prompt_type = "other"
+            reasons.append("no strong keyword match; defaulting to 'other'")
 
-    confidence = 0.55 if prompt_type != "other" else 0.35
+    confidence = 0.6 if prompt_type != "other" else 0.35
     return PromptClassification(prompt_type=prompt_type, confidence=confidence, reasons=reasons)
 
 

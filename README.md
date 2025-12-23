@@ -62,12 +62,12 @@ Same result, less setup.
 
 When you submit a prompt, Prometheus:
 
-1. Searches through 811 curated prompt engineering guidelines to find relevant advice
-2. Analyzes what's missing from your prompt (context? examples? format?)
-3. Generates three enhanced variations using model-specific patterns
+1. Detects the prompt type (code, analysis, explain, creative, summarize, troubleshoot)
+2. Searches 811 curated prompt-engineering guidelines and picks those relevant to that type
+3. Generates enhanced variations using type-specific structures (no user model selection needed)
 4. Returns all versions with metadata so you can see what changed
 
-We use ChromaDB for vector similarity search and sentence-transformers for embeddings. The enhancement logic uses templates informed by training experiments with LoRA adapters, but runs without needing a GPU at inference time.
+We use ChromaDB for vector similarity search and sentence-transformers for embeddings. The enhancement logic uses lightweight templates informed by training experiments, but runs without needing a GPU at inference time.
 
 <details>
 <summary>System diagram</summary>
@@ -79,9 +79,10 @@ graph TD
     style VectorDB fill:#fdebd0,stroke:#d35400,stroke-width:2px
     style LLM fill:#fadbd8,stroke:#c0392b,stroke-width:2px
 
-    User(User) -- "Submits prompt + model choice" --> API(Web App)
+    User(User) -- "Submits prompt" --> API(Web App)
     
     subgraph Backend
+        API -- "Detect prompt type" --> Classifier(Prompt Type Classifier)
         API -- "Query for guidelines" --> Retriever(RAG Retriever)
         Retriever --> VectorDB[(Vector DB<br/>811 Guidelines)]
         VectorDB --> Retriever
@@ -91,7 +92,7 @@ graph TD
     end
 
     LLM -- "3 enhanced variants" --> API
-    API -- "Results + metadata" --> User
+    API -- "Results + metadata (incl. detected type)" --> User
 ```
 
 </details>
@@ -105,7 +106,6 @@ curl -X POST http://localhost:8000/augment \
   -H "Content-Type: application/json" \
   -d '{
     "raw_prompt": "Explain quantum computing",
-    "target_model": "ChatGPT",
     "num_variations": 3
   }'
 ```
@@ -120,7 +120,7 @@ curl -X POST http://localhost:8000/augment \
     "Help me understand quantum computing. Include: basic principles..."
   ],
   "original_prompt": "Explain quantum computing",
-  "target_model": "ChatGPT",
+  "detected_prompt_type": "explain",
   "model_type": "lightweight",
   "rag_context_used": true,
   "rag_chunks_count": 5
@@ -133,13 +133,15 @@ curl -X POST http://localhost:8000/augment \
 curl http://localhost:8000/health
 ```
 
-## Supported models
+## Supported prompt types
 
-- **ChatGPT** — Structured, step-by-step prompts with clear role definitions
-- **Claude** — XML-tagged sections with explicit thinking steps
-- **Gemini** — Clean sectioned prompts with helpful formatting
-
-Each model has different preferences. Prometheus knows them all.
+- **Code** — snippets, debugging, refactors
+- **Analysis** — comparisons, evaluations, trade-offs
+- **Explain** — overviews, definitions, walkthroughs
+- **Creative** — stories, taglines, scripts, lyrics
+- **Summarize** — TL;DR, key points, concise recaps
+- **Troubleshoot** — errors, exceptions, why it fails
+- **Other** — fallback when no strong match
 
 ## Project structure
 
