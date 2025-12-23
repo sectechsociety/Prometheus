@@ -102,9 +102,8 @@ class PrometheusLightModel:
         else:
             guidelines_text = ""
 
-        def _enhance_by_type(
-            self, raw_prompt: str, prompt_type: str, guidelines: str, variation: int
-        ) -> str:
+        # Helper function for type-driven templates
+        def enhance_by_type(raw_prompt: str, prompt_type: str, guidelines: str, variation: int) -> str:
             """Type-driven templates (no model-specific branching)."""
 
             g = f"Guidelines to consider:\n{guidelines}\n" if guidelines else ""
@@ -114,11 +113,11 @@ class PrometheusLightModel:
                     f"""Task: {raw_prompt}
 
     Please produce:
-    1) **Goal**: Restate the coding objective
-    2) **Plan**: Step-by-step approach
-    3) **Example**: Show a working snippet
-    4) **Edge Cases**: List tricky inputs
-    5) **Pitfalls**: Common mistakes to avoid
+    1) Goal: Restate the coding objective
+    2) Plan: Step-by-step approach
+    3) Example: Show a working snippet
+    4) Edge Cases: List tricky inputs
+    5) Pitfalls: Common mistakes to avoid
 
     {g}
     Format with code blocks and concise bullets.""",
@@ -333,28 +332,9 @@ class PrometheusLightModel:
 
             templates = templates_by_type.get(prompt_type, templates_by_type["other"])
             return templates[variation % len(templates)]
-- Quick context and background
-- Why this is useful
 
-📖 **Detailed Explanation**
-- Core concepts explained simply
-- How pieces connect
-
-🛠️ **Practical Application**  
-- Real-world examples
-- Step-by-step implementation
-- Code with explanations
-
-⚡ **Tips & Optimization**
-- Best practices
-- Common pitfalls
-
-{g3}""",
-        ]
-        return templates[variation % len(templates)]
-
-
-# Singleton instance
+        # Call the helper and return the result
+        return enhance_by_type(raw_prompt, prompt_type, guidelines_text, variation_index)
 _model_instance: PrometheusLightModel | None = None
 
 
